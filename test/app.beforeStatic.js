@@ -72,10 +72,25 @@ describe('GET /default-test', function(){
   })
 })
 
-describe('GET /default-test', function(){
+describe('GET /index.html', function(){
   it('respond with inserted script', function(done){
     request(app)
       .get('/index.html')
+      .set('Accept', 'text/html')
+      .expect(200)
+      .end(function(err, res){
+        assert(hasScript(res.text));
+        assert(~res.text.indexOf(':35730/livereload.js'));
+        if (err) return done(err);
+        done()
+      });
+  })
+})
+
+describe('GET /large-file', function(){
+  it('respond with inserted script', function(done){
+    request(app)
+      .get('/large-file.html')
       .set('Accept', 'text/html')
       .expect(200)
       .end(function(err, res){

@@ -58,28 +58,37 @@ module.exports = function liveReload(opt) {
     };
 
     res.inject = res.write = function(string, encoding) {
-      res.write = write;
       if (string !== undefined) {
         var body = string instanceof Buffer ? string.toString(encoding) : string;
         if ((bodyExists(body) || bodyExists(res.data)) && !snippetExists(body) && (!res.data || !snippetExists(res.data))) {
           res.push(body.replace(/<\/body>/, function(w) {
             return getSnippet() + w;
           }));
-          return true;
         } else {
-          return res.write(string, encoding);
+          res.push(body);
         }
       }
       return true;
     };
 
+    // Prevent headers from being finalized
+    res.writeHead = function() {};
+
     res.end = function(string, encoding) {
+      res.inject(string, encoding);
+
+      // Restore write and writeHead
       res.writeHead = writeHead;
+      res.write = write;
+
+      if (res.data !== undefined) {
+        if (!res._header) {
+          res.setHeader('content-length', Buffer.byteLength(res.data, encoding));
+        }
+      }
+      end.call(res, res.data, encoding);
+      // Restore end
       res.end = end;
-      var result = res.inject(string, encoding);
-      if (!result) return res.end(string, encoding);
-      if (res.data !== undefined && !res._header) res.setHeader('content-length', Buffer.byteLength(res.data, encoding));
-      res.end(res.data, encoding);
     };
     next();
   };
